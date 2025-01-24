@@ -3,9 +3,7 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class SphereMeshGenerator : MonoBehaviour
 {
-
     [SerializeField] private Material material;
-
 
     private MeshRenderer meshRenderer;
 
@@ -48,7 +46,9 @@ public class SphereMeshGenerator : MonoBehaviour
 
                 vertices[vertIndex] = new Vector3(x, y, z) * radius;
                 normals[vertIndex] = vertices[vertIndex].normalized;
-                uv[vertIndex] = new Vector2((float)lon / longitudeSegments, (float)lat / latitudeSegments);
+
+                // Correct UV mapping for consistent texture wrapping
+                uv[vertIndex] = new Vector2((float)lon / longitudeSegments, 1 - (float)lat / latitudeSegments);
 
                 if (lat < latitudeSegments && lon < longitudeSegments)
                 {
@@ -78,6 +78,10 @@ public class SphereMeshGenerator : MonoBehaviour
 
         meshFilter.mesh = mesh;
 
-        meshRenderer.material = material;
+        // Assign material to the mesh renderer
+        if (material != null)
+        {
+            meshRenderer.material = material;
+        }
     }
 }

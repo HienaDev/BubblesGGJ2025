@@ -4,6 +4,10 @@ using UnityEngine;
 public class SphereMeshGenerator : MonoBehaviour
 {
     [SerializeField] private Material material;
+    [SerializeField] private float springStrength = 10f;
+    [SerializeField] private float springDamping = 0.1f;
+    [SerializeField] private float gravityForce = 9.81f;
+    [SerializeField] private float movementSpeed = 5f;
 
     private MeshRenderer meshRenderer;
 
@@ -11,10 +15,17 @@ public class SphereMeshGenerator : MonoBehaviour
     [Range(2, 128)] public int latitudeSegments = 16;
     public float radius = 1f;
 
+    private GameObject[] vertexObjects;
+
     private void Start()
     {
         meshRenderer = GetComponent<MeshRenderer>();
         GenerateSphere();
+    }
+
+    private void Update()
+    {
+        HandleMovement();
     }
 
     private void GenerateSphere()
@@ -45,7 +56,9 @@ public class SphereMeshGenerator : MonoBehaviour
                 float z = ringRadius * Mathf.Sin(lonAngle);
 
                 vertices[vertIndex] = new Vector3(x, y, z) * radius;
-                normals[vertIndex] = vertices[vertIndex].normalized;
+
+                // Ensure the normals are correctly normalized
+                normals[vertIndex] = new Vector3(x, y, z).normalized;
 
                 // Correct UV mapping for consistent texture wrapping
                 uv[vertIndex] = new Vector2((float)lon / longitudeSegments, 1 - (float)lat / latitudeSegments);
@@ -71,10 +84,13 @@ public class SphereMeshGenerator : MonoBehaviour
         }
 
         mesh.vertices = vertices;
-        mesh.normals = normals;
+        mesh.normals = normals; // Assign precomputed normals
         mesh.uv = uv;
         mesh.triangles = triangles;
+
+        // Recalculate bounds and ensure normals are consistent
         mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
 
         meshFilter.mesh = mesh;
 
@@ -82,6 +98,76 @@ public class SphereMeshGenerator : MonoBehaviour
         if (material != null)
         {
             meshRenderer.material = material;
+        }
+
+        // Initialize vertex objects for physics
+        InitializePhysics(vertices);
+    }
+
+    private void InitializePhysics(Vector3[] vertices)
+    {
+        vertexObjects = new GameObject[vertices.Length];
+
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            // Create a small sphere at each vertex
+            GameObject vertexObject = new GameObject("Vertex_" + i);
+            vertexObject.transform.position = transform.TransformPoint(vertices[i]);
+            vertexObject.transform.parent = transform;
+
+            // Add Rigidbody
+            Rigidbody rb = vertexObject.AddComponent<Rigidbody>();
+            rb.mass = 0.1f;
+            rb.linearDamping = 0.1f;
+            rb.useGravity = false; // Gravity is simulated manually
+
+            // Add SphereCollider
+            SphereCollider collider = vertexObject.AddComponent<SphereCollider>();
+            collider.radius = 0.05f;
+
+            vertexObjects[i] = vertexObject;
+        }
+
+        // Add SpringJoints between all vertices
+        for (int i = 0; i < vertexObjects.Length; i++)
+        {
+            for (int j = 0; j < vertexObjects.Length; j++)
+            {
+                if (i != j)
+                {
+                    SpringJoint spring = vertexObjects[i].AddComponent<SpringJoint>();
+                    spring.connectedBody = vertexObjects[j].GetComponent<Rigidbody>();
+                    spring.spring = springStrength;
+                    spring.damper = springDamping;
+                    spring.minDistance = 0;
+                    spring.maxDistance = Vector3.Distance(vertexObjects[i].transform.position, vertexObjects[j].transform.position);
+                }
+            }
+        }
+    }
+
+    private void HandleMovement()
+    {
+        Vector3 inputDirection = Vector3.zero;
+
+        if (Input.GetKey(KeyCode.A))
+        {
+            inputDirection = Vector3.left;
+        }
+        else if (Input.GetKey(KeyCode.D))
+        {
+            inputDirection = Vector3.right;
+        }
+
+        foreach (GameObject vertexObject in vertexObjects)
+        {
+            Rigidbody rb = vertexObject.GetComponent<Rigidbody>();
+
+            // Apply gravity manually
+            rb.AddForce(Vector3.down * gravityForce, ForceMode.Acceleration);
+
+            // Apply movement force
+            rb.AddForce(inputDirection * movementSpeed, ForceMode.Acceleration);
         }
     }
 }

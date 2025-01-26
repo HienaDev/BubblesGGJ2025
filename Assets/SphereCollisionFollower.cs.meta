@@ -1,0 +1,12 @@
+fileFormatVersion: 2
+guid: 7d2cac7bbe0d44f4784a5a82f7d02198
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - collisionBubble: {fileID: 3502579007074654202, guid: b31a32414697b9e46a4762bb58aff2ba, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
